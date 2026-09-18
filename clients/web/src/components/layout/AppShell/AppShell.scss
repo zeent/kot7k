@@ -1,0 +1,56 @@
+.app-shell__main {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(100vh - 3rem);
+  margin-top: 3rem;
+  padding: 2rem;
+  background: var(--cds-background);
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.app-shell__main--collapsed {
+  margin-left: 0;
+  width: 100%;
+}
+
+.app-shell__brand.cds--header__name { width: auto; min-width: 12rem; padding: 0 1rem; }
+.app-shell__brand-logo { display: block; width: 10rem; height: 3rem; object-fit: contain; filter: invert(1); mix-blend-mode: screen; }
+
+.app-shell__notification {
+  position: fixed;
+  top: 3rem;
+  right: 0;
+  z-index: 9000;
+  pointer-events: none;
+}
+
+.app-shell__notification--collapsed {
+  left: 0;
+}
+
+.app-shell__notification > * {
+  pointer-events: auto;
+}
+
+.app-shell__user-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  width: 100%;
+  padding: 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  background: transparent;
+  color: var(--cds-text-primary);
+  text-align: left;
+  font: inherit;
+  font-size: .875rem;
+  line-height: 1.5;
+  cursor: pointer;
+  svg { flex-shrink: 0; margin-top: .125rem; }
+  text-decoration: none;
+  &:disabled { opacity: .5; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: var(--cds-layer-hover); }
+  &:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+}

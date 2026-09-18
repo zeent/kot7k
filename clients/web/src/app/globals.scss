@@ -1,0 +1,15 @@
+@use "@carbon/react" with (
+  $use-akamai-cdn: true
+);
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+

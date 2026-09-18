@@ -1,0 +1,29 @@
+{
+  "name": "kot7k_webui",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 10000",
+    "build": "next build",
+    "start": "next start -p 10000",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@carbon/icons-react": "^11.84.0",
+    "@carbon/react": "^1.112.0",
+    "@ibm/plex": "^6.4.1",
+    "next": "16.2.11",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sass": "^1.101.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.11",
+    "typescript": "^5"
+  }
+}
