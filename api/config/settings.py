@@ -129,17 +129,60 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+DATABASE_ENVIRONMENT = os.getenv(
+    "DATABASE_ENVIRONMENT",
+    "development",
+).strip().lower()
+
+DATABASE_CONFIGS = {
+    "development": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DEV_POSTGRES_DB", "kot7k"),
+        "USER": os.getenv("DEV_POSTGRES_USER", "kot7k"),
+        "PASSWORD": os.getenv("DEV_POSTGRES_PASSWORD"),
+        "HOST": os.getenv("DEV_POSTGRES_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DEV_POSTGRES_PORT", "5432"),
+    },
+    "production": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("PROD_POSTGRES_DB"),
+        "USER": os.getenv("PROD_POSTGRES_USER"),
+        "PASSWORD": os.getenv("PROD_POSTGRES_PASSWORD"),
+        "HOST": os.getenv("PROD_POSTGRES_HOST"),
+        "PORT": os.getenv("PROD_POSTGRES_PORT", "5432"),
+        "OPTIONS": {
+            "sslmode": os.getenv("PROD_POSTGRES_SSLMODE", "prefer"),
+            "connect_timeout": int(os.getenv("PROD_POSTGRES_CONNECT_TIMEOUT", "10")),
+        },
+    },
+}
+
+if DATABASE_ENVIRONMENT not in DATABASE_CONFIGS:
+    raise RuntimeError(
+        "DATABASE_ENVIRONMENT must be 'development' or 'production'"
+    )
+
+if DATABASE_ENVIRONMENT == "production":
+    missing_database_settings = [
+        name
+        for name in (
+            "PROD_POSTGRES_DB",
+            "PROD_POSTGRES_USER",
+            "PROD_POSTGRES_PASSWORD",
+            "PROD_POSTGRES_HOST",
+        )
+        if not os.getenv(name)
+    ]
+    if missing_database_settings:
+        raise RuntimeError(
+            "Missing production database settings: "
+            + ", ".join(missing_database_settings)
+        )
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "kot7k"),
-        "USER": os.getenv("POSTGRES_USER", "kot7k"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-    }
+    "default": DATABASE_CONFIGS[DATABASE_ENVIRONMENT],
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
