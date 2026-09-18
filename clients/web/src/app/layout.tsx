@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/siteConfig"
 import { AuthProvider }
   from "@/domains/authentication/context/AuthContext"
 import { LocaleProvider } from "@/i18n/LocaleProvider"
-import { getRequestLocale } from "@/i18n/server"
+import { fallbackLocale } from "@/i18n/config"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,12 +26,12 @@ export const metadata: Metadata = {
   description: siteConfig.description,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getRequestLocale()
+  const locale = fallbackLocale
 
   return (
     <html lang={locale} className={`${geistSans.variable} ${geistMono.variable}`}>

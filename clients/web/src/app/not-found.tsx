@@ -1,8 +1,12 @@
-import Link from "next/link"
-import { getRequestMessages } from "@/i18n/server"
+"use client"
 
-export default async function NotFound() {
-  const messages = await getRequestMessages()
+import Link from "next/link"
+import { messages as translations } from "@/i18n/config"
+import { useLocale } from "@/i18n/LocaleProvider"
+
+export default function NotFound() {
+  const { locale } = useLocale()
+  const messages = translations[locale]
 
   return (
     <main
