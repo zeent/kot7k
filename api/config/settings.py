@@ -20,11 +20,8 @@ load_dotenv(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-b9uyp-_sf7ga8(x=(k6jn@-sr3r_f%*j48$k!*-cys^v)$^e8g'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 EXTERNAL_AUTH_CALLBACK_BASE_URL = os.getenv(
     "EXTERNAL_AUTH_CALLBACK_BASE_URL",
