@@ -1,0 +1,25 @@
+[Unit]
+Description=KOT7K Identity Provider
+After=network.target
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=joan
+Group=joan
+
+WorkingDirectory=/opt/kot7k/api
+
+ExecStart=/opt/kot7k/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind 192.168.11.23:8000 \
+    --access-logfile - \
+    --error-logfile - \
+    config.wsgi:application
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
