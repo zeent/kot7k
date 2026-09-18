@@ -28,6 +28,8 @@ EXTERNAL_AUTH_CALLBACK_BASE_URL = os.getenv(
     "http://localhost:10001",
 ).rstrip("/")
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 OIDC_ISSUER = os.getenv("OIDC_ISSUER", "http://localhost:10001").rstrip("/")
 OIDC_FRONTEND_URL = os.getenv("OIDC_FRONTEND_URL", "http://localhost:10000").rstrip("/")
 OIDC_PRIVATE_KEY_ENV = "OIDC_PRIVATE_KEY"
