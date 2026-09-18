@@ -170,8 +170,8 @@ def install_node():
 def main():
     if sys.platform != "linux" or os.geteuid() != 0:
         raise RuntimeError("Executa install.sh en un servidor Linux amb sudo.")
-    if sys.version_info < (3, 12):
-        raise RuntimeError("Cal Python 3.12 o superior: Ubuntu 24.04+ o Debian 13+.")
+    if not (3, 12) <= sys.version_info[:2] < (3, 15):
+        raise RuntimeError("Cal Python 3.12–3.14. Executa install.sh perquè el prepari automàticament.")
     if not Path("/run/systemd/system").exists() or not shutil.which("apt-get"):
         raise RuntimeError("Cal Debian/Ubuntu amb systemd i apt-get.")
     if not re.fullmatch(r"/[A-Za-z0-9_./-]+", str(ROOT)):
@@ -229,7 +229,11 @@ def main():
         return run("runuser", "-u", account, "--", "env", "-i", f"HOME={user.pw_dir}", "LANG=C.UTF-8", f"PATH={node_bin}:/usr/local/bin:/usr/bin:/bin",
                    *args, cwd=cwd or ROOT / "api", **kwargs)
     python = ROOT / "api/.venv/bin/python"
-    if not python.exists():
+    if python.exists():
+        compatible = subprocess.run([str(python), "-c", "import sys; assert (3, 12) <= sys.version_info[:2] < (3, 15)"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        if not compatible:
+            raise RuntimeError("api/.venv ja existeix amb un Python incompatible. Conserva’l amb un altre nom i repeteix install.sh; no s’esborrarà automàticament.")
+    else:
         app(sys.executable, "-m", "venv", ROOT / "api/.venv")
     app(python, "-m", "pip", "install", "--upgrade", "pip")
     app(python, "-m", "pip", "install", "-r", "requirements.txt")

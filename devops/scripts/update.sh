@@ -11,4 +11,7 @@ fi
 if [[ $EUID -ne 0 ]]; then
   exec sudo bash "$SCRIPT_DIR/update.sh"
 fi
-exec python3 "$SCRIPT_DIR/update.py"
+source "$SCRIPT_DIR/python-runtime.sh"
+ROOT_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
+PYTHON_RUNTIME="$(kot7k_python_runtime "$ROOT_DIR" no)"
+exec "$PYTHON_RUNTIME" "$SCRIPT_DIR/update.py"

@@ -2,7 +2,7 @@
 
 ## Instal·lació nova
 
-En Ubuntu 24.04+ o Debian 13+ amb systemd, Python 3.12+ i accés sudo:
+En Debian/Ubuntu amb systemd i accés sudo (recomanat Ubuntu 24.04+ o Debian 13+):
 
 ```bash
 git clone <URL-del-repositori> /opt/kot7k
@@ -156,3 +156,17 @@ La comprovació HTTPS es fa contra el Nginx local amb el domini i el certificat
 reals. No substitueix una comprovació externa del DNS, el tallafoc o un altre proxy.
 Les instal·lacions manuals antigues sense `/etc/kot7k/kot7k-<hash>.json` es rebutgen
 abans de tocar Git o serveis; no creïs aquest fitxer a mà per forçar-ne l'ús.
+
+## Python automàtic
+
+`install.sh` busca Python 3.12–3.14 al venv del clon, al PATH, a `/usr/local/bin`
+i als runtimes privats. Si no el troba, instal·la uv en un entorn aïllat i descarrega
+Python 3.13 a `/opt/kot7k-runtimes/python`. No canvia `/usr/bin/python3`.
+No cal activar cap entorn. `update.sh` reutilitza el runtime instal·lat.
+
+Això també permet preparar Python en sistemes com Ubuntu 22.04 o Debian 12;
+la compatibilitat de la resta de paquets s'ha de validar en el servidor concret.
+Cal accés a PyPI i als repositoris de binaris d'Astral/GitHub.
+Si ja hi ha un `api/.venv` incompatible, es rebutja sense esborrar-lo: cal conservar-lo
+amb un altre nom abans de repetir la instal·lació. Un runtime instal·lat sota
+`/root` pot no ser accessible per l'usuari del servei; utilitza el runtime compartit.
