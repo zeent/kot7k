@@ -267,3 +267,10 @@ out/
 
 # Coverage
 coverage/
+# Published static frontend
+/api/ui_dist/
+/api/ui_dist.previous/
+
+# Frontend source libraries are not Python build artifacts.
+!/clients/web/src/lib/
+!/clients/web/src/lib/**
