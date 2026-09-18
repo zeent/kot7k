@@ -2,6 +2,7 @@
 """Single-host installer. All system mutations live in main(); helpers are testable."""
 import base64
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -113,6 +114,43 @@ server {{
 """
 
 
+def proxy_networks(value):
+    networks = [str(ipaddress.ip_network(part.strip(), strict=False)) for part in value.split(",") if part.strip()]
+    if not networks:
+        raise ValueError("Indica almenys una IP del proxy HTTPS.")
+    if any(ipaddress.ip_network(network).prefixlen == 0 for network in networks):
+        raise ValueError("No es permet confiar en totes les IP d’Internet.")
+    return networks
+
+
+def proxy_nginx_config(domain, instance, networks):
+    allowed = "\n".join(f"    allow {network};" for network in networks)
+    return f"""{MARKER}
+# TLS terminates at the trusted upstream proxy. Block direct public access.
+server {{
+    listen 80;
+    listen [::]:80;
+    server_name {domain};
+    allow 127.0.0.1;
+    allow ::1;
+{allowed}
+    deny all;
+    client_max_body_size 10m;
+    location /static/ {{
+        alias {ROOT}/api/static_dist/;
+    }}
+    location / {{
+        proxy_pass http://unix:/run/{instance}/app.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 120s;
+    }}
+}}
+"""
+
+
 def install_nginx(path, content, enabled_directory=Path("/etc/nginx/sites-enabled")):
     """Restore the previous configuration if validation fails."""
     path = Path(path)
@@ -198,7 +236,18 @@ def main():
         if (ROOT / "api/.env").exists():
             raise RuntimeError("Aquest clon ja té api/.env. Per a una instal·lació nova utilitza un clon net; no se sobreescriuran les dades existents.")
         domain = domain_name(input("Domini públic (p. ex. idp.abaqua.cat): "))
-        socket.getaddrinfo(domain, 80)
+        answer = input("Vols configurar el certificat HTTPS amb Let’s Encrypt en aquest servidor? [S/n]: ").strip().lower()
+        if answer not in ("", "s", "si", "sí", "n", "no"):
+            raise ValueError("Respon s o n.")
+        configure_tls = answer not in ("n", "no")
+        trusted_proxies = []
+        if configure_tls:
+            try:
+                socket.getaddrinfo(domain, 80)
+            except socket.gaierror as exc:
+                raise RuntimeError(f"El domini {domain} encara no resol per DNS. Configura el DNS o escull no configurar el certificat local.") from exc
+        else:
+            trusted_proxies = proxy_networks(input("IP del proxy HTTPS que connectarà a aquest servidor (separades per comes): "))
         account = pwd.getpwuid(ROOT.stat().st_uid).pw_name
         if account == "root":
             account = instance
@@ -209,13 +258,18 @@ def main():
                     text = file.read_text()
                     if any(domain in names.split() for names in re.findall(r"server_name\s+([^;]+);", text)):
                         raise RuntimeError(f"El domini ja està configurat a {file}. No el sobreescriuré.")
-        state = {"root": str(ROOT), "domain": domain, "account": account}
+        state = {"root": str(ROOT), "domain": domain, "account": account, "configure_tls": configure_tls, "trusted_proxies": trusted_proxies}
         write_atomic(state_file, json.dumps(state, indent=2) + "\n", 0o600)
-    print("Mode: Nginx i TLS al mateix servidor.\nEl DNS públic i els ports 80/443 han d’arribar a aquest servidor per obtenir el certificat.", flush=True)
+    configure_tls = state.get("configure_tls", True)
+    if configure_tls:
+        print("Mode: HTTPS local. El DNS i els ports 80/443 han d’arribar a aquest servidor.", flush=True)
+    else:
+        print("Mode: proxy HTTPS extern. Sense comprovació DNS ni Certbot local.", flush=True)
     environment = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
     run("apt-get", "update", env=environment)
     run("apt-get", "install", "-y", "python3-venv", "python3-dev", "build-essential", "libpq-dev",
-        "postgresql", "nginx", "certbot", "ca-certificates", "curl", "xz-utils", "openssl", env=environment)
+        "postgresql", "nginx", "ca-certificates", "curl", "xz-utils", "openssl",
+        *(["certbot"] if configure_tls else []), env=environment)
     run("systemctl", "enable", "--now", "postgresql", "nginx")
     try:
         user = pwd.getpwnam(account)
@@ -321,16 +375,22 @@ WantedBy=timers.target
     else:
         raise RuntimeError(f"L’API no respon. Consulta journalctl -u {instance}.")
     site = Path("/etc/nginx/sites-available") / instance
-    certificate = Path(f"/etc/letsencrypt/live/{instance}/fullchain.pem")
-    Path("/var/lib/letsencrypt/.well-known/acme-challenge").mkdir(parents=True, exist_ok=True)
-    install_nginx(site, nginx_config(ROOT, domain, instance, tls=certificate.exists()))
-    # Certbot asks for its registration email and acceptance of Let's Encrypt terms.
-    run("certbot", "certonly", "--webroot", "-w", "/var/lib/letsencrypt", "--cert-name", instance,
-        "-d", domain, "--keep-until-expiring")
-    install_nginx(site, nginx_config(ROOT, domain, instance, tls=True))
-    write_atomic(Path("/etc/letsencrypt/renewal-hooks/deploy/kot7k-nginx"), "#!/bin/sh\nnginx -t && systemctl reload nginx\n", 0o755)
-    run("systemctl", "enable", "--now", "certbot.timer")
-    run("curl", "--fail", "--silent", "--show-error", "--resolve", f"{domain}:443:127.0.0.1", f"https://{domain}/authentication/login", "-o", "/dev/null")
+    if configure_tls:
+        certificate = Path(f"/etc/letsencrypt/live/{instance}/fullchain.pem")
+        Path("/var/lib/letsencrypt/.well-known/acme-challenge").mkdir(parents=True, exist_ok=True)
+        install_nginx(site, nginx_config(ROOT, domain, instance, tls=certificate.exists()))
+        # Certbot asks for its registration email and acceptance of Let's Encrypt terms.
+        run("certbot", "certonly", "--webroot", "-w", "/var/lib/letsencrypt", "--cert-name", instance,
+            "-d", domain, "--keep-until-expiring")
+        install_nginx(site, nginx_config(ROOT, domain, instance, tls=True))
+        write_atomic(Path("/etc/letsencrypt/renewal-hooks/deploy/kot7k-nginx"), "#!/bin/sh\nnginx -t && systemctl reload nginx\n", 0o755)
+        run("systemctl", "enable", "--now", "certbot.timer")
+        run("curl", "--fail", "--silent", "--show-error", "--resolve", f"{domain}:443:127.0.0.1", f"https://{domain}/authentication/login", "-o", "/dev/null")
+    else:
+        install_nginx(site, proxy_nginx_config(domain, instance, state["trusted_proxies"]))
+        run("curl", "--fail", "--silent", "--show-error", "--max-time", "15", "-H", f"Host: {domain}",
+            "http://127.0.0.1/authentication/login", "-o", "/dev/null")
+        print(f"Configura el proxy extern per enviar https://{domain} a HTTP port 80 d’aquest servidor, conservant Host.")
     print(f"\nKOT7K instal·lat: https://{domain}\nServei: {instance}\nClon: {ROOT}\n")
 
 

@@ -30,17 +30,25 @@ de Let's Encrypt si encara no hi ha cap compte registrat.
 
 ## Requisits de xarxa
 
-Aquest mode instal·la **Nginx i TLS al mateix servidor que KOT7K**. Els registres
-DNS A i, si n'hi ha, AAAA del domini han d'apuntar-hi; els ports públics 80 i 443
-han d'arribar-hi. El port 80 continua necessari per renovar mitjançant HTTP-01.
-No es modifiquen automàticament el DNS, el tallafoc, el NAT ni altres servidors.
-Cal sortida a Internet per instal·lar paquets, descarregar Node i fonts del build.
+L'instal·lador pregunta si vols configurar el certificat local:
 
-No és el mode per a un proxy TLS separat en una altra màquina. No executar-lo
-sobre la instal·lació antiga de dos servidors sense planificar abans la migració.
-Si el domini ja figura en una configuració Nginx activa, l'instal·lador s'atura
-per evitar substituir un altre lloc. Un clon nou amb `api/.env` també es rebutja:
-aquest és un instal·lador nou, no un importador de dades o credencials existents.
+- **Sí**: Nginx i TLS en aquest servidor. El DNS A/AAAA i els ports 80/443 han
+  d'arribar-hi. Certbot emet el certificat i configura la renovació.
+- **No**: TLS en un proxy extern. No comprova DNS, no instal·la ni executa Certbot
+  i no exigeix port 443 local. Demana la IP o xarxa del proxy (separades per comes),
+  i Nginx només accepta aquest origen i localhost pel port 80. L'origen públic
+  de l'app continua sent `https://<domini>`; cookies i redireccions segueixen sent HTTPS.
+
+En el segon mode, configura el proxy extern per acabar TLS, redirigir HTTP públic
+cap a HTTPS i enviar les peticions al port 80 del servidor de l'app, conservant
+la capçalera Host. El certificat i la renovació són responsabilitat del proxy.
+La IP que cal introduir és la que Nginx veu com a origen de la connexió (després de
+NAT, si n'hi ha). No es confien capçaleres de qualsevol origen d'Internet.
+
+No es modifiquen DNS, tallafocs, NAT ni el proxy extern. Cal accés a Internet per
+instal·lar paquets. Si el domini ja figura en Nginx, o un clon nou té `api/.env`,
+l'instal·lador s'atura abans de substituir configuracions existents.
+L'elecció queda guardada i es reutilitza en reexecucions i en `update.sh`.
 
 ## Què configura
 
@@ -57,7 +65,7 @@ aquest és un instal·lador nou, no un importador de dades o credencials existen
 - Servei Gunicorn no root amb socket Unix privat compartit amb Nginx.
 - Nginx: HTTP redirigeix a HTTPS, `/static/` serveix els recursos de Django i la
   resta va a Django, inclosa la UI i les capçaleres específiques de logout.
-- Certificat Let's Encrypt, renovació automàtica i recàrrega de Nginx.
+- En mode TLS local: certificat Let's Encrypt, renovació automàtica i recàrrega de Nginx.
 - Timer cada minut per reintentar notificacions pendents de logout SSO.
 - Comprovacions de Django, salut de l'API, sintaxi Nginx i resposta HTTPS local.
 
@@ -170,3 +178,7 @@ Cal accés a PyPI i als repositoris de binaris d'Astral/GitHub.
 Si ja hi ha un `api/.venv` incompatible, es rebutja sense esborrar-lo: cal conservar-lo
 amb un altre nom abans de repetir la instal·lació. Un runtime instal·lat sota
 `/root` pot no ser accessible per l'usuari del servei; utilitza el runtime compartit.
+
+En mode proxy extern, `update.sh` no exigeix `certbot.timer` i verifica el Nginx
+local per HTTP amb la capçalera Host. No valida el certificat del proxy extern.
+Els estats antics sense l'opció `configure_tls` conserven el mode TLS local.

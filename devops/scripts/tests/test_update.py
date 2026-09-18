@@ -86,7 +86,7 @@ class DeploymentTests(unittest.TestCase):
         with patch.object(updater, "run") as run, patch.object(updater.subprocess, "run") as recovery, patch.object(updater, "verify_http") as health:
             recovery.return_value.returncode = 0
             updater.deploy(lambda *args, **kwargs: None, Path("/opt/example"), "kot7k-test", "auth.example.com")
-            health.assert_called_once_with("auth.example.com", "kot7k-test")
+            health.assert_called_once_with("auth.example.com", "kot7k-test", configure_tls=True)
             checked = [call.args[-1] for call in run.call_args_list if "is-active" in call.args]
             self.assertEqual(len(checked), 5)
             self.assertIn("certbot.timer", checked)
@@ -96,3 +96,20 @@ class DeploymentTests(unittest.TestCase):
         with patch.object(updater.subprocess, "run", return_value=response), patch.object(updater, "run", return_value=subprocess.CompletedProcess([], 0, '302', '')):
             with self.assertRaises(RuntimeError):
                 updater.verify_http("auth.example.com", "kot7k-test")
+
+
+class ExternalProxyUpdateTests(unittest.TestCase):
+    def test_update_does_not_require_certbot(self):
+        with patch.object(updater, "run") as run, patch.object(updater.subprocess, "run") as recovery, patch.object(updater, "verify_http") as health:
+            recovery.return_value.returncode = 0
+            updater.deploy(lambda *args, **kwargs: None, Path("/opt/example"), "kot7k-test", "auth.example.com", configure_tls=False)
+            self.assertFalse(any("certbot.timer" in call.args for call in run.call_args_list))
+            health.assert_called_once_with("auth.example.com", "kot7k-test", configure_tls=False)
+
+    def test_proxy_health_uses_http_and_host_without_dns(self):
+        with patch.object(updater.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, '[]', '')), patch.object(updater, "run", return_value=subprocess.CompletedProcess([], 0, '200', '')) as run:
+            updater.verify_http("auth.example.com", "kot7k-test", configure_tls=False)
+            self.assertEqual(run.call_count, 3)
+            for call in run.call_args_list:
+                self.assertIn("Host: auth.example.com", call.args)
+                self.assertNotIn("--resolve", call.args)

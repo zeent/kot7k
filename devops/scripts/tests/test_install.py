@@ -94,3 +94,19 @@ class NginxInstallTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 installer.install_nginx(site, "new config", Path(folder))
             self.assertEqual(site.read_text(), "existing config")
+
+
+class ExternalProxyTests(unittest.TestCase):
+    def test_proxy_addresses(self):
+        self.assertEqual(installer.proxy_networks("192.168.11.22, 10.0.0.0/24"), ["192.168.11.22/32", "10.0.0.0/24"])
+        for value in ("", "0.0.0.0/0", "::/0", "bad; config"):
+            with self.assertRaises(ValueError):
+                installer.proxy_networks(value)
+
+    def test_proxy_config_has_no_local_certificate_and_restricts_access(self):
+        config = installer.proxy_nginx_config("idp.example.com", "kot7k-test", ["192.168.11.22/32"])
+        self.assertIn("allow 192.168.11.22/32;", config)
+        self.assertIn("deny all;", config)
+        self.assertIn("X-Forwarded-Proto https;", config)
+        self.assertNotIn("ssl_certificate", config)
+        self.assertNotIn("return 301", config)

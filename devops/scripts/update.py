@@ -42,7 +42,7 @@ def node_runtime():
     return max(candidates)[1]
 
 
-def verify_http(domain, instance):
+def verify_http(domain, instance, configure_tls=True):
     for attempt in range(15):
         response = subprocess.run([
             "curl", "--silent", "--show-error", "--fail", "--max-time", "5",
@@ -59,14 +59,14 @@ def verify_http(domain, instance):
     else:
         raise RuntimeError("L’API no respon correctament després del reinici.")
     for path in ("/authentication/login", "/api/identity-providers/discovery/", "/authentication/front-channel-logout"):
+        target = ["--resolve", f"{domain}:443:127.0.0.1", f"https://{domain}{path}"] if configure_tls else ["-H", f"Host: {domain}", f"http://127.0.0.1{path}"]
         result = run("curl", "--silent", "--show-error", "--fail", "--max-time", "15",
-                     "--resolve", f"{domain}:443:127.0.0.1", "-o", "/dev/null", "-w", "%{http_code}",
-                     f"https://{domain}{path}", capture_output=True, text=True)
+                     "-o", "/dev/null", "-w", "%{http_code}", *target, capture_output=True, text=True)
         if result.stdout != "200":
             raise RuntimeError(f"HTTPS {path}: s’esperava 200, rebut {result.stdout}.")
 
 
-def deploy(app, root, instance, domain):
+def deploy(app, root, instance, domain, configure_tls=True):
     python = root / "api/.venv/bin/python"
     # Validate Nginx before stopping any application process.
     run("nginx", "-t")
@@ -89,13 +89,14 @@ def deploy(app, root, instance, domain):
                 print(f"No s’ha pogut recuperar {service}; consulta journalctl -u {service}.", file=sys.stderr)
     run("systemctl", "daemon-reload")
     run("systemctl", "restart", instance)
-    run("systemctl", "enable", "--now", instance, "nginx", timer, "certbot.timer")
+    certificate_services = ["certbot.timer"] if configure_tls else []
+    run("systemctl", "enable", "--now", instance, "nginx", timer, *certificate_services)
     run("systemctl", "reload", "nginx")
     # Run the oneshot job once to detect errors hidden behind an active timer.
     run("systemctl", "start", instance + "-logout.service")
-    for service in ("postgresql", instance, "nginx", timer, "certbot.timer"):
+    for service in ("postgresql", instance, "nginx", timer, *certificate_services):
         run("systemctl", "is-active", "--quiet", service)
-    verify_http(domain, instance)
+    verify_http(domain, instance, configure_tls=configure_tls)
 
 
 def main():
@@ -130,8 +131,8 @@ def main():
     print(f"Actualitzant {ROOT} ({domain})…", flush=True)
     before, after = update_git(app, ROOT)
     print(f"Git: {before[:12]} → {after[:12]}", flush=True)
-    deploy(app, ROOT, instance, domain)
-    print(f"Actualització completada: https://{domain}\nAPI, Nginx, PostgreSQL, timers i HTTPS verificats.")
+    deploy(app, ROOT, instance, domain, configure_tls=state.get("configure_tls", True))
+    print(f"Actualització completada: https://{domain}\nAPI, Nginx, PostgreSQL, timers i connexió local verificats.")
 
 
 if __name__ == "__main__":
