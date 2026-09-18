@@ -46,6 +46,7 @@ export default function LoginPage() {
   const router =
     useRouter()
   const [externalLoginError, setExternalLoginError] = useState<string | null>(null)
+  const [providerError, setProviderError] = useState<string | null>(null)
   const [providers, setProviders] = useState<PublicIdentityProvider[] | null>(null)
 
   const {
@@ -90,6 +91,8 @@ export default function LoginPage() {
     let cancelled = false
     void discoverIdentityProviders().then((result) => {
       if (!cancelled) setProviders(result)
+    }).catch(() => {
+      if (!cancelled) setProviderError("No s’ha pogut connectar amb el servei d’autenticació. Torna-ho a provar o contacta amb l’administrador.")
     })
     return () => { cancelled = true }
   }, [])
@@ -145,8 +148,12 @@ export default function LoginPage() {
   }
 
 
+  if (providerError) {
+    return <main><p role="alert">{providerError}</p><button onClick={() => window.location.reload()}>Torna-ho a provar</button></main>
+  }
+
   if (isLoading || !providers) {
-    return null
+    return <main><p role="status">Carregant l’accés…</p></main>
   }
 
 
@@ -210,7 +217,7 @@ export default function LoginPage() {
               min-width: 0;
               min-height: 100vh;
 
-              background-image: url("/images/abstract/login-hero.png");
+              background-image: url("/images/abstract/kot7k-login-blue.png");
 
               background-position: right center;
 

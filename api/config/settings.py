@@ -29,6 +29,12 @@ EXTERNAL_AUTH_CALLBACK_BASE_URL = os.getenv(
 ).rstrip("/")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "false").lower() == "true"
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "false").lower() == "true"
+CSRF_TRUSTED_ORIGINS = [value.strip() for value in os.getenv(
+    "CSRF_TRUSTED_ORIGINS", ""
+).split(",") if value.strip()]
 
 OIDC_ISSUER = os.getenv("OIDC_ISSUER", "http://localhost:10001").rstrip("/")
 OIDC_FRONTEND_URL = os.getenv("OIDC_FRONTEND_URL", "http://localhost:10000").rstrip("/")
@@ -213,7 +219,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'static_dist'
 UI_DIST_ROOT = BASE_DIR / 'ui_dist'
 
 # Default primary key field type

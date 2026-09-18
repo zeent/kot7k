@@ -20,6 +20,13 @@ Asset inventories, incident/ticket management, procurement, document management 
 - `api/kot7k/organizations`: identity provider configuration.
 - `clients/web`: login, dashboard and IAM administration.
 
+## Installation on a Linux server
+
+Clone the repository into a new directory and run `./devops/scripts/install.sh`.
+The installer uses that checkout, requests the public domain and initial administrator,
+and configures PostgreSQL, Django/Gunicorn, the static UI, Nginx and Let's Encrypt.
+See [the installation guide](devops/scripts/README.md) for requirements and reruns.
+
 ## Local development
 
 Configure PostgreSQL in `api/.env`; the default database and role are `kot7k`.

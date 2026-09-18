@@ -150,7 +150,7 @@ export function AppShell({
               width={2087}
               height={754}
               priority
-              className="app-shell__brand-logo"
+              className={`app-shell__brand-logo${theme === "g100" ? " app-shell__brand-logo--dark" : ""}`}
             />
           </HeaderName>
 

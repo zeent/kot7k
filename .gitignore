@@ -274,3 +274,6 @@ coverage/
 # Frontend source libraries are not Python build artifacts.
 !/clients/web/src/lib/
 !/clients/web/src/lib/**
+
+# Collected Django static assets
+/api/static_dist/

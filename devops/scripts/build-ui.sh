@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-ROOT_DIR="/opt/kot7k"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+ROOT_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
 UI_DIR="$ROOT_DIR/clients/web"
 DIST_DIR="$ROOT_DIR/api/ui_dist"
 
