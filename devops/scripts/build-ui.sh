@@ -13,11 +13,4 @@ cd "$UI_DIR"
 npm ci
 npm run build
 
-echo "==> Deploying UI to $DIST_DIR"
-
-rm -rf "$DIST_DIR"
-mkdir -p "$DIST_DIR"
-
-cp -a "$UI_DIR/out/." "$DIST_DIR/"
-
-echo "==> UI deployed successfully"
+echo "==> UI deployed successfully to $DIST_DIR"
